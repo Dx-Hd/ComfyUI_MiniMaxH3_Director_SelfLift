@@ -1,6 +1,6 @@
 # ComfyUI MiniMax H3 Director
 
-基于 **ComfyUI 官方 MiniMax-H3** 的多段音视频导演台插件。仓库地址：[AIMixer/ComfyUI_MiniMaxH3_Director](https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director)
+基于 **ComfyUI 官方 MiniMax-H3** 的多段音视频导演台插件。仓库地址：[Dx-Hd/ComfyUI_MiniMaxH3_Director](https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director)
 
 **English** → [README_EN.md](README_EN.md)
 
@@ -83,7 +83,7 @@ Refine 的 `nvidia_rtx_vsr` 另需 NVIDIA GPU，可 `pip install nvidia-vfx --ex
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director.git
+git clone https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director.git
 
 pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
 ```
@@ -94,7 +94,7 @@ pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
 
 1. 打开 **ComfyUI Manager**
 2. 选择 **Install via Git URL**
-3. 填入 `https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director.git` 并安装
+3. 填入 `https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director.git` 并安装
 4. 重启 ComfyUI
 
 ## 模型与工作流下载
@@ -214,7 +214,7 @@ pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
 | | |
 |---|---|
 | **维护者** | [AI搅拌手 / AIMixer](https://github.com/AIMixer) |
-| **本仓库** | [github.com/AIMixer/ComfyUI_MiniMaxH3_Director](https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director) |
+| **本仓库** | [github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director](https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director) |
 | **姊妹插件** | [ComfyUI_Bernini_Director](https://github.com/AIMixer/ComfyUI_Bernini_Director) |
 | **作者 QQ** | **3697688140** |
 | **B 站** | [space.bilibili.com/1997403556](https://space.bilibili.com/1997403556) |

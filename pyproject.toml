@@ -14,9 +14,9 @@ dynamic = ["dependencies"]
 dependencies = {file = ["requirements.txt"]}
 
 [project.urls]
-Repository = "https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director"
-Documentation = "https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director#readme"
-"Bug Tracker" = "https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director/issues"
+Repository = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director"
+Documentation = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director#readme"
+"Bug Tracker" = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director/issues"
 
 [tool.comfy]
 PublisherId = "aimixer"
