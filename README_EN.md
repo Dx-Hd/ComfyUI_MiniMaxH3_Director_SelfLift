@@ -1,7 +1,9 @@
 # ComfyUI MiniMax H3 Director
 
-Multi-segment AV timeline director for **official ComfyUI MiniMax-H3**.  
-Repository: [Dx-Hd/ComfyUI_MiniMaxH3_Director](https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director)
+SelfLift R2V companion for the **official ComfyUI MiniMax-H3** Director.
+Repository: [Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift](https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift)
+
+Install this repository alongside the original [AIMixer/ComfyUI_MiniMaxH3_Director](https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director) in separate folders. The original supplies shared Director nodes, HTTP routes, and the base timeline; this companion registers only `MiniMaxH3DirectorSelfLift` and does not replace the original nodes.
 
 **中文文档** → [README.md](README.md)
 
@@ -83,9 +85,9 @@ Refine `nvidia_rtx_vsr` needs an NVIDIA GPU: `pip install nvidia-vfx --extra-ind
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director.git
+git clone https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift.git ComfyUI_MiniMaxH3_Director_SelfLift
 
-pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
+pip install -r ComfyUI_MiniMaxH3_Director_SelfLift/requirements.txt
 ```
 
 Restart ComfyUI.
@@ -94,7 +96,7 @@ Restart ComfyUI.
 
 1. Open **ComfyUI Manager**
 2. Choose **Install via Git URL**
-3. Enter `https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director.git` and install
+3. Enter `https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift.git` and install it into a separate folder
 4. Restart ComfyUI
 
 ## Models & workflow downloads
@@ -212,7 +214,7 @@ Mirror the two official conditioning nodes and feed **multi-group** batches into
 | | |
 |---|---|
 | **Maintainer** | [AIMixer](https://github.com/AIMixer) |
-| **Repository** | [github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director](https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director) |
+| **Repository** | [github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift](https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift) |
 | **Sibling plugin** | [ComfyUI_Bernini_Director](https://github.com/AIMixer/ComfyUI_Bernini_Director) |
 | **Author QQ** | **3697688140** |
 | **Bilibili** | [space.bilibili.com/1997403556](https://space.bilibili.com/1997403556) |

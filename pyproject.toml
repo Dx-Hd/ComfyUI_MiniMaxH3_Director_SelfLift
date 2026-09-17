@@ -1,6 +1,6 @@
 [project]
-name = "minimax-h3-director"
-description = "Multi-segment MiniMax H3 Director — official MiniMaxH3ImageToVideo / ReferenceToVideo pipeline."
+name = "minimax-h3-director-selflift"
+description = "SelfLift R2V companion for the official ComfyUI MiniMax H3 Director."
 version = "1.0.0"
 license = {file = "LICENSE"}
 requires-python = ">=3.10"
@@ -14,12 +14,12 @@ dynamic = ["dependencies"]
 dependencies = {file = ["requirements.txt"]}
 
 [project.urls]
-Repository = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director"
-Documentation = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director#readme"
-"Bug Tracker" = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director/issues"
+Repository = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift"
+Documentation = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift#readme"
+"Bug Tracker" = "https://github.com/Dx-Hd/ComfyUI_MiniMaxH3_Director_SelfLift/issues"
 
 [tool.comfy]
-PublisherId = "aimixer"
-DisplayName = "MiniMax H3 Director"
+PublisherId = "dx-hd"
+DisplayName = "MiniMax H3 Director SelfLift"
 Icon = ""
 requires-comfyui = ">=0.30.0"
