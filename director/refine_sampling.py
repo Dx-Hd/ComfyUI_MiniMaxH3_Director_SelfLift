@@ -16,8 +16,10 @@ from .refine_pack import (
     refine_passes_for,
     refine_seed_for,
     refine_sigmas_override,
+    refine_uses_selflift,
     refine_uses_h3_latent,
 )
+from .selflift_sampling import sample_h3_selflift
 
 log = logging.getLogger("ComfyUI-MiniMaxH3-Director.director.refine")
 
@@ -729,6 +731,55 @@ def apply_segment_refine(
                     int(getattr(seg, "index", 0)) + 1,
                     exc,
                 )
+
+        if refine_uses_selflift(pack):
+            sigma_list = refine_sigmas_override(pack)
+            if sigma_list is None:
+                raise ValueError(
+                    "h3_selflift 二采需要把 BasicScheduler / ExtendIntermediateSigmas 接到 sigmas 口。"
+                )
+            note_parts.append(
+                "SelfLift Euler "
+                f"{max(1, len(sigma_list) - 1)}-step"
+            )
+            transition = pack.get("selflift_transition_step")
+            lowres_scale = pack.get("selflift_lowres_scale")
+            note_parts.append(f"transition {int(5 if transition is None else transition)}")
+            note_parts.append(f"lowres {float(0.4 if lowres_scale is None else lowres_scale):g}")
+            if pack.get("selflift_highres_tiling"):
+                note_parts.append("highres tiling")
+            for i in range(n_passes):
+                if on_phase:
+                    on_phase("refine", i / max(1, n_passes))
+                work = sample_h3_selflift(
+                    pack,
+                    model=refine_model,
+                    vae=vae,
+                    positive=refine_positive,
+                    negative=negative,
+                    latent=work,
+                    seed=refine_seed_for(pack, seed, pass_index=i),
+                    cfg=cfg,
+                    shift_video=shift_video,
+                    shift_audio=shift_audio,
+                    shift_cache=shift_cache,
+                    on_phase=on_phase,
+                    on_step_preview=on_step_preview,
+                )
+                last_ok = work
+                if on_pass is not None:
+                    try:
+                        on_pass(i + 1, n_passes, work)
+                    except Exception as exc:
+                        log.warning(
+                            "Segment %s SelfLift pass %d hook failed (%s).",
+                            int(getattr(seg, "index", 0)) + 1,
+                            i + 1,
+                            exc,
+                        )
+            if on_phase:
+                on_phase("refine", 1)
+            return work, "refine " + ", ".join(note_parts)
 
         if mode == "latent_upscale":
             if on_phase:

@@ -12719,12 +12719,14 @@ function clearAllDirectorRunStatus() {
 /** Old workflows may still list removed output slots (e.g. segment_images). */
 function isMiniMaxH3DirectorNode(node) {
     const cls = node?.comfyClass || node?.type || "";
-    return cls === "MiniMaxH3Director" || cls === "ComfyMiniMaxH3Director";
+    return cls === "MiniMaxH3Director" || cls === "ComfyMiniMaxH3Director"
+        || cls === "MiniMaxH3DirectorSelfLift";
 }
 
 function isDirectorNodeDef(nodeType, nodeData) {
     const cls = nodeType?.comfyClass || nodeData?.name || "";
-    return cls === "MiniMaxH3Director" || cls === "ComfyMiniMaxH3Director";
+    return cls === "MiniMaxH3Director" || cls === "ComfyMiniMaxH3Director"
+        || cls === "MiniMaxH3DirectorSelfLift";
 }
 
 function stripDeprecatedDirectorOutputs(node) {

@@ -193,11 +193,13 @@ function isFollowAspect(value) {
 function readMode(node) {
     const named = widgetByName(node, "mode");
     const raw = String(widgetValue(named) ?? "").toLowerCase();
+    if (raw.includes("h3_selflift") || raw.includes("selflift")) return "h3_selflift";
     if (raw.includes("latent_upscale") || raw.includes("latent")) return "latent_upscale";
     if (raw.includes("upscale")) return "upscale";
     if (raw.includes("refine")) return "refine";
     for (const w of node.widgets || []) {
         const s = String(widgetValue(w) ?? "").toLowerCase();
+        if (s === "h3_selflift") return "h3_selflift";
         if (s === "latent_upscale") return "latent_upscale";
         if (s === "upscale") return "upscale";
         if (s === "refine") return "refine";
@@ -550,6 +552,7 @@ async function clearSegmentCache(node) {
 
 function syncRefineWidgetVisibility(node) {
     const mode = readMode(node);
+    const selflift = mode === "h3_selflift";
     const upscale = mode === "upscale";
     const latentOnly = mode === "latent_upscale";
     const needsCanvas = upscale || latentOnly;
@@ -565,6 +568,13 @@ function syncRefineWidgetVisibility(node) {
     setWidgetVisible(node, "upscale_method", upscale);
     setWidgetVisible(node, "latent_upscale_model", showH3Model);
     setWidgetVisible(node, "enable_latent_chunking", showH3Model);
+    setWidgetVisible(node, "selflift_upscaler_model", selflift);
+    setWidgetVisible(node, "selflift_transition_step", selflift);
+    setWidgetVisible(node, "selflift_lowres_scale", selflift);
+    setWidgetVisible(node, "selflift_rho", selflift);
+    setWidgetVisible(node, "selflift_w_min", selflift);
+    setWidgetVisible(node, "selflift_w_max", selflift);
+    setWidgetVisible(node, "selflift_highres_tiling", selflift);
     setWidgetVisible(node, "h3_latent_model", false);
     setWidgetVisible(node, "upscale_model", false);
     setWidgetVisible(node, "schedule", false);
@@ -575,8 +585,8 @@ function syncRefineWidgetVisibility(node) {
     setWidgetVisible(node, "sampler", !latentOnly);
     setWidgetVisible(node, "passes", !latentOnly);
     setWidgetVisible(node, "seed_mode", !latentOnly);
-    setWidgetVisible(node, "enable_tiling", !latentOnly);
-    const tilingOn = !latentOnly && Boolean(widgetValue(widgetByName(node, "enable_tiling")));
+    setWidgetVisible(node, "enable_tiling", !latentOnly && !selflift);
+    const tilingOn = !latentOnly && !selflift && Boolean(widgetValue(widgetByName(node, "enable_tiling")));
     setWidgetVisible(node, "tile_count", tilingOn);
     setWidgetVisible(node, "tile_overlap", tilingOn);
     setWidgetVisible(node, "target_width", false);

@@ -8,6 +8,11 @@ from ..director.h3_latent_upscale import list_h3_latent_upscale_models
 from ..director.refine_pack import (
     ASPECT_RATIO_CHOICES,
     DEFAULT_REFINE_SIGMA_SAMPLER,
+    DEFAULT_SELFLIFT_LOWRES_SCALE,
+    DEFAULT_SELFLIFT_RHO,
+    DEFAULT_SELFLIFT_TRANSITION_STEP,
+    DEFAULT_SELFLIFT_W_MAX,
+    DEFAULT_SELFLIFT_W_MIN,
     DEFAULT_UPSCALE_MEGAPIXELS,
     FOLLOW_DIRECTOR_ASPECT,
     MAX_REFINE_PASSES,
@@ -22,12 +27,22 @@ from ..director.refine_pack import (
 _CATEGORY = "MiniMaxH3"
 
 
+def _selflift_upscaler_choices():
+    names = [
+        name
+        for name in list_h3_latent_upscale_models()
+        if name and not str(name).startswith("(")
+    ]
+    return ["none", *names]
+
+
 class MiniMaxH3DirectorRefine:
     """Pack refine/upscale settings. Connect ``refine`` to Director.refine.
 
     ``refine``: same-resolution second sample.
     ``upscale``: enlarge to target canvas then second-sample.
     ``latent_upscale``: H3 latent enlarge only, no second sample.
+    ``h3_selflift``: run the existing second pass through SelfLiftH3Sampler.
     Second sample uses SIGMAS from BasicScheduler / ManualSigmas.
     """
 
@@ -43,6 +58,7 @@ class MiniMaxH3DirectorRefine:
                             "refine = 同分辨率二采（精修）。"
                             "upscale = 先放大到目标画布再二采。"
                             "latent_upscale = 只放大 H3 latent，不再二采。"
+                            "h3_selflift = 首遍完成后用 H3 SelfLift 做二采加速。"
                         ),
                     },
                 ),
@@ -255,6 +271,69 @@ class MiniMaxH3DirectorRefine:
                         ),
                     },
                 ),
+                "selflift_upscaler_model": (
+                    _selflift_upscaler_choices(),
+                    {
+                        "default": "none",
+                        "tooltip": (
+                            "h3_selflift 可选的 H3 3D latent upscaler；none 使用 SelfLift 内置提升。"
+                        ),
+                    },
+                ),
+                "selflift_transition_step": (
+                    "INT",
+                    {
+                        "default": DEFAULT_SELFLIFT_TRANSITION_STEP,
+                        "min": 1,
+                        "max": 10000,
+                        "tooltip": "SelfLift 低分辨率阶段的 Euler 评估次数。H3-双采默认 5。",
+                    },
+                ),
+                "selflift_lowres_scale": (
+                    "FLOAT",
+                    {
+                        "default": DEFAULT_SELFLIFT_LOWRES_SCALE,
+                        "min": 0.25,
+                        "max": 1.0,
+                        "step": 0.05,
+                        "tooltip": "SelfLift 低分辨率空间比例。",
+                    },
+                ),
+                "selflift_rho": (
+                    "FLOAT",
+                    {
+                        "default": DEFAULT_SELFLIFT_RHO,
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.05,
+                        "tooltip": "SelfLift H3 像素锚点修正比例。",
+                    },
+                ),
+                "selflift_w_min": (
+                    "FLOAT",
+                    {
+                        "default": DEFAULT_SELFLIFT_W_MIN,
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.05,
+                    },
+                ),
+                "selflift_w_max": (
+                    "FLOAT",
+                    {
+                        "default": DEFAULT_SELFLIFT_W_MAX,
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.05,
+                    },
+                ),
+                "selflift_highres_tiling": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "SelfLift 高分辨率阶段自动分块（实验性）。",
+                    },
+                ),
             },
         }
 
@@ -295,9 +374,16 @@ class MiniMaxH3DirectorRefine:
         confirm_first_pass=False,
         enable_latent_chunking=False,
         enable_tiling=False,
-        tile_count=2,
-        tile_overlap=128,
-        latent_upscale_model=None,
+         tile_count=2,
+         tile_overlap=128,
+         selflift_upscaler_model="none",
+         selflift_transition_step=DEFAULT_SELFLIFT_TRANSITION_STEP,
+         selflift_lowres_scale=DEFAULT_SELFLIFT_LOWRES_SCALE,
+         selflift_rho=DEFAULT_SELFLIFT_RHO,
+         selflift_w_min=DEFAULT_SELFLIFT_W_MIN,
+         selflift_w_max=DEFAULT_SELFLIFT_W_MAX,
+         selflift_highres_tiling=False,
+         latent_upscale_model=None,
         upscale_model=None,
         h3_latent_model="",
         sigmas=None,
@@ -346,9 +432,16 @@ class MiniMaxH3DirectorRefine:
             confirm_first_pass=bool(confirm_first_pass),
             enable_latent_chunking=bool(enable_latent_chunking),
             enable_tiling=bool(enable_tiling),
-            tile_count=tile_count,
-            tile_overlap=tile_overlap,
-            upscale_method=upscale_method,
+             tile_count=tile_count,
+             tile_overlap=tile_overlap,
+             selflift_upscaler_model=selflift_upscaler_model,
+             selflift_transition_step=selflift_transition_step,
+             selflift_lowres_scale=selflift_lowres_scale,
+             selflift_rho=selflift_rho,
+             selflift_w_min=selflift_w_min,
+             selflift_w_max=selflift_w_max,
+             selflift_highres_tiling=selflift_highres_tiling,
+             upscale_method=upscale_method,
             sample_model=refine_model if refine_model is not None else model,
             latent_upscale_model=latent_upscale_model if latent_upscale_model is not None else h3_latent_model,
             upscale_model=upscale_model,

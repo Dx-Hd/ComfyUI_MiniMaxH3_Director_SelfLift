@@ -373,6 +373,7 @@ def finalize_director_outputs(
     pre_refine_combined=None,
     pre_refine_segments: list | None = None,
     block_final_images: bool = False,
+    describe_pre_refine: bool = True,
 ):
     is_batch = is_prompt_batch_timeline(plan.raw, plan.global_task_key)
     export_segments = plan.export_mode == "segments"
@@ -519,16 +520,17 @@ def finalize_director_outputs(
     source_images_out = _ensure_nonempty_image_batches(source_images_out, label="source_images")
     pre_refine_out = _ensure_nonempty_image_batches(pre_refine_out, label="images_pre_refine")
 
-    refine_pack = getattr(plan, "refine", None)
-    if isinstance(refine_pack, dict) and refine_pack.get("enabled"):
-        report = report + (
-            "\n\nimages_pre_refine: first-pass video (before second sample / upscale). "
-            "Cached or passthrough slots reuse the stored final frames."
-        )
-    else:
-        report = report + (
-            "\n\nimages_pre_refine: same as images (Refine node not connected)."
-        )
+    if describe_pre_refine:
+        refine_pack = getattr(plan, "refine", None)
+        if isinstance(refine_pack, dict) and refine_pack.get("enabled"):
+            report = report + (
+                "\n\nimages_pre_refine: first-pass video (before second sample / upscale). "
+                "Cached or passthrough slots reuse the stored final frames."
+            )
+        else:
+            report = report + (
+                "\n\nimages_pre_refine: same as images (Refine node not connected)."
+            )
 
     report = report + "\n\n有问题联系作者：AI搅拌手  QQ交流群：551482703"
 

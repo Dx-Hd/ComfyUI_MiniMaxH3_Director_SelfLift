@@ -236,6 +236,9 @@ def _segment_identity_fingerprint(seg: SegmentPlan, plan: DirectorPlan) -> dict[
             record = groups[index]
             if isinstance(record, dict):
                 payload[EXTERNAL_SEGMENT_FP_KEY] = record
+    sample_fingerprint = getattr(plan, "sample_fingerprint", None)
+    if isinstance(sample_fingerprint, dict) and sample_fingerprint:
+        payload["sample_path"] = sample_fingerprint
     return payload
 
 

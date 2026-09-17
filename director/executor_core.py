@@ -5,7 +5,7 @@ from __future__ import annotations
 import gc
 import logging
 import time
-from typing import Any
+from typing import Any, Callable
 
 import torch
 
@@ -396,6 +396,8 @@ def execute_director_plan_core(
     shift_audio: float = 3.0,
     clear_vram_between_segments: bool = True,
     clear_vram_before_refine: bool = False,
+    sample_stage: Callable[..., dict] | None = None,
+    sampling_label: str | None = None,
 ) -> tuple[
     torch.Tensor,
     list[torch.Tensor],
@@ -406,7 +408,8 @@ def execute_director_plan_core(
     list[torch.Tensor],
     bool,
 ]:
-    """Process every segment with MiniMax H3 conditioning + single-stage sampling."""
+    """Process every segment with MiniMax H3 conditioning + one sampling stage."""
+    sample_stage = sample_single_stage if sample_stage is None else sample_stage
     plan.sample_seed = int(seed)
     plan.sample_cfg = float(cfg)
     plan.sample_steps = int(steps)
@@ -451,8 +454,12 @@ def execute_director_plan_core(
     segment_pre_refine: list[torch.Tensor] = []
     segment_audios: list[dict[str, Any]] = []
     skipped_no_cache: list[int] = []
-    reports: list[str] = [plan_summary(plan), "", "Execution path: ComfyUI official MiniMax H3"]
-    if first_pass_sigmas is not None:
+    execution_label = sampling_label or "ComfyUI official MiniMax H3"
+    reports: list[str] = [plan_summary(plan), "", f"Execution path: {execution_label}"]
+    if sampling_label:
+        sigma_steps = max(0, len(first_pass_sigmas) - 1) if first_pass_sigmas is not None else 0
+        reports.append(f"Sample: {sampling_label}（外接 SIGMAS，{sigma_steps} 步）。")
+    elif first_pass_sigmas is not None:
         sigma_steps = max(0, len(first_pass_sigmas) - 1)
         reports.append(
             f"Sample: 外接 SIGMAS（{sigma_steps} 步）→ MiniMaxH3SigmaShift(model) → "
@@ -1109,7 +1116,7 @@ def execute_director_plan_core(
                 f"(seed={int(getattr(plan, 'sample_seed', seed) or seed)})，跳过一采，开始二采"
             )
         else:
-            samples = sample_single_stage(
+            samples = sample_stage(
                 model=model,
                 positive=positive,
                 negative=negative,

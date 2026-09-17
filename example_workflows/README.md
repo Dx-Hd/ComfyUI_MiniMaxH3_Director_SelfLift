@@ -7,11 +7,13 @@
 | `minimax_h3_director_t2v.json` | t2v | fl2va | 文生音视频，可直接 Queue |
 | `minimax_h3_director_fl2v.json` | fl2v | fl2va | 首尾帧；「添加一组」后上传首帧和/或尾帧（可只传尾帧） |
 | `minimax_h3_director_r2v.json` | r2v | **ref2va** | 参考改视频；素材组：图片1–9 / 音频1–3 / 视频1–3 |
+| `minimax_h3_director_r2v_selflift.json` | r2v | **ref2va** | R2V 素材组 + SelfLift 单程渐进采样；不会先跑 Director 完整一采；需安装 `comfyui-SelfLift` |
 | `minimax_h3_director_v2v.json` | v2v | **ref2va** | 源视频编辑；导演台上传视频并分段（同 Bernini v2v） |
 | `minimax_h3_director_rv2v.json` | rv2v | **ref2va** | 参考改视频；源视频 + 图片1–9 |
 | `minimax_h3_director_external_groups_i2v.json` | fl2v | fl2va | 外部 Group（Image to Video）→ Combine → Director.`i2v_groups`；时长/素材以接线为准 |
 | `minimax_h3_director_external_groups_r2v.json` | r2v | **ref2va** | 外部 Group（Reference to Video）→ Combine → Director.`r2v_groups`；可用「选择运行」勾选组序 |
 | `minimax_h3_director_二采_加速.json` | r2v | **ref2va** | 外接 **MiniMax H3 Director Refine** → Director.`refine`（SIGMAS + H3 latent）。`images` 为二采后成片，`images_pre_refine` 为一采对比片 |
+| `MiniMax-H3-导演台-SelfLift双采-Refine版.json` | r2v | **ref2va** | 保留 Director 首遍，Refine 使用 `h3_selflift`；BasicScheduler(simple, 8, 1) → ExtendIntermediateSigmas → SelfLiftH3Sampler |
 
 ## 模型路径（与官方模板一致）
 
@@ -42,6 +44,7 @@ Refine 示例另把 `images_pre_refine` 接到第二路 `CreateVideo` / `SaveVid
 - 二采一律按 SIGMAS：把 `BasicScheduler` 或 `ManualSigmas` 接到 Refine 的 `sigmas` 口。`BasicScheduler` 请接和二采相同的 MODEL
 - 不接 Refine 节点 = 原来的单次采样
 - `mode=refine`：同分辨率精修；`mode=upscale`：放大到目标画布再二采；`mode=latent_upscale`：只放大 H3 latent
+- `mode=h3_selflift`：首遍仍由 Director 采样，二遍把首遍 AV latent 交给 SelfLiftH3Sampler；不会把 SelfLift 接到 Director 首遍
 - 导演台分辨率是一采；Refine 画布（比例+百万像素 / 自定义）是放大目标
 - `passes`：精修次数（默认 1）；`upscale` 只在第 1 次放大；`latent_upscale` 不二采
 - 可选接 `refine_model`（二采 UNET）；不接则用导演台主模型

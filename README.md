@@ -23,7 +23,8 @@
 | **外部多组接线** | `Director Group (Image to Video)` / `(Reference to Video)` + `Groups Combine`；连入导演台 `i2v_groups` / `r2v_groups` 后外部优先覆盖 UI 素材，仍支持跑批与选择运行 |
 | **原生立体声音频** | 与画面同次采样生成；`v2v`/`rv2v` 可选生成声音 / 使用原声 / 静音 |
 | **段间引导** | 默认关闭；多段 `t2v` / `i2v` / `fl2v` / `r2v` / `v2v` / `rv2v` 时可开启，将上一段生成结果的末尾运动（及生成音频）钉入下一段采样再裁掉前缀。上下文帧数：5 / 22 / 39 / 56，**默认推荐为 22**。**感谢 [ComfyUI-H3-Motion-Context](https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context) 提供的实现思路** |
-| **二采 / 放大 (Refine)** | 外接 **MiniMax H3 Director Refine** 到导演台 `refine` 口。未接线 = 原来的单次采样。`refine` = 同分辨率精修；`upscale` = 先放大到目标画布再按 SIGMAS 二采（像素插值 / RTX VSR / H3 latent）；`latent_upscale` = 只放大 H3 latent、不二采。`passes` 可多次精修（upscale 只放大一次）。可选接 `refine_model` 换二采 UNET。`images` 为二采后成片，`images_pre_refine` 为一采（放大前）画面 |
+| **二采 / 放大 (Refine)** | 外接 **MiniMax H3 Director Refine** 到导演台 `refine` 口。未接线 = 原来的单次采样。`refine` = 同分辨率精修；`upscale` = 先放大到目标画布再按 SIGMAS 二采（像素插值 / RTX VSR / H3 latent）；`latent_upscale` = 只放大 H3 latent、不二采；`h3_selflift` = 保留首遍 AV latent，用 SelfLiftH3Sampler 做 H3 二采加速。`passes` 可多次精修（upscale 只放大一次）。可选接 `refine_model` 换二采 UNET。`images` 为二采后成片，`images_pre_refine` 为一采（放大前）画面 |
+| **R2V SelfLift 单程节点** | `MiniMax H3 Director · SelfLift R2V` 保留导演台 R2V 素材组与导出界面，每段直接执行 SelfLift 的低分辨率前缀 → latent 提升 → 高分辨率续采；不会先跑旧 Director 25 步，也不需要 Refine |
 | **运行报告** | `report` 口输出分段计划、每段任务摘要 |
 | **导演包导入导出** | 工具栏「导入/导出导演包」：zip 内保存时间轴 JSON 与参考图/视频/音频。目录名为英文（`shared_params/`、`asset_groups/01/`、`Picture1`…），与切到 EN 后的界面用语对应，避免路径编码问题 |
 
@@ -116,6 +117,7 @@ pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
 | `minimax_h3_director_t2v.json` | t2v | fl2va | 文生音视频 |
 | `minimax_h3_director_fl2v.json` | fl2v | fl2va | 首尾帧（「添加一组」） |
 | `minimax_h3_director_r2v.json` | r2v | **ref2va** | 参考改视频素材组 |
+| `minimax_h3_director_r2v_selflift.json` | r2v | **ref2va** | R2V 素材组 + SelfLift 单程渐进采样；需安装 `comfyui-SelfLift` |
 | `minimax_h3_director_v2v.json` | v2v | **ref2va** | 源视频时间轴编辑 |
 | `minimax_h3_director_rv2v.json` | rv2v | **ref2va** | 源视频 + 参考图/音频 |
 | `minimax_h3_director_external_groups_i2v.json` | fl2v | fl2va | 外部 Group×2 → Combine → `i2v_groups` |
@@ -173,11 +175,12 @@ pip install -r ComfyUI_MiniMaxH3_Director/requirements.txt
 1. 添加 **MiniMax H3 Director Refine**，把 `refine` 接到导演台 `refine` 口。不接则仍是原来的一采
 2. `mode=refine`：同分辨率再采一遍（精修）。`mode=upscale`：先放大到目标画布再二采。`mode=latent_upscale`：只放大 H3 视频 latent，不再二采。分辨率控件在 `upscale` / `latent_upscale` 时显示（可跟随导演台、按比例+百万像素，或自定义宽高）。导演台是一采分辨率，Refine 目标才是放大后的宽高
 3. `passes`：精修次数，默认 1、最多 9999。`upscale` 只在第 1 次放大，后面都是同分辨率精修；`latent_upscale` 不二采
-4. 可选接 `refine_model`（二采 UNET）；不接则用导演台主模型。适合一采挂 Turbo LoRA、二采卸掉或换另一套
-5. 导演台 `images` 是二采后成片；`images_pre_refine` 是一采、放大前的画面，便于对比。`source_images` 仍是时间轴原片，不是一采结果。开启 `confirm_first_pass` 后，首次 Queue 只输出 `images_pre_refine` 并阻断主 `images` 下游保存；再次 Queue 命中缓存并完成二采后，`images` 才输出
-6. 二采用 SIGMAS：把 `BasicScheduler` 或 `ManualSigmas` 接到 Refine 的 `sigmas` 口
-7. fl2v 默认跳过二采（保护钉死的首尾帧）；关掉 Refine 上的 `skip_fl2v` 才会采
-8. `upscale` 默认 `h3_latent`：在 Refine 节点里选 3D 权重（`upscale_method` 下方下拉框；`mode=latent_upscale` 时同样出现）。权重放 `ComfyUI/models/latent_upscale_models/`。`lanczos` 可另接 `upscale_model`（RealESRGAN 等），不接则纯插值；也可改 `nvidia_rtx_vsr`
+4. `h3_selflift` 使用 `BasicScheduler(simple, 8, 1.0) → ExtendIntermediateSigmas(3, 0.75, 0, cosine)` 的 SIGMAS，并固定 Euler；默认参数为 `transition=5`、`lowres_scale=0.4`、`rho=0.6`、`w_min=0.5`、`w_max=1`，可选 H3 3D latent upscaler 与高分辨率分块
+5. 可选接 `refine_model`（二采 UNET）；不接则用导演台主模型。适合一采挂 Turbo LoRA、二采卸掉或换另一套
+6. 导演台 `images` 是二采后成片；`images_pre_refine` 是一采、放大前的画面，便于对比。`source_images` 仍是时间轴原片，不是一采结果。开启 `confirm_first_pass` 后，首次 Queue 只输出 `images_pre_refine` 并阻断主 `images` 下游保存；再次 Queue 命中缓存并完成二采后，`images` 才输出
+7. 二采用 SIGMAS：把 `BasicScheduler` 或 `ManualSigmas` 接到 Refine 的 `sigmas` 口
+8. fl2v 默认跳过二采（保护钉死的首尾帧）；关掉 Refine 上的 `skip_fl2v` 才会采
+9. `upscale` 默认 `h3_latent`：在 Refine 节点里选 3D 权重（`upscale_method` 下方下拉框；`mode=latent_upscale` 时同样出现）。权重放 `ComfyUI/models/latent_upscale_models/`。`lanczos` 可另接 `upscale_model`（RealESRGAN 等），不接则纯插值；也可改 `nvidia_rtx_vsr`
 9. 「分段导出」且 `passes>1` 时，每轮会另落 `seg_XXXX_pN.mp4`；「全部导出」只出一采和终稿
 
 示例：`example_workflows/minimax_h3_director_二采_加速.json`

@@ -13,7 +13,7 @@ from ..lib.image_prep import MINIMAX_CANVAS_STRIDE, ensure_minimax_canvas
 
 MMX_DIR_REFINE = "MMX_DIR_REFINE"
 
-REFINE_MODES = ("refine", "upscale", "latent_upscale")
+REFINE_MODES = ("refine", "upscale", "latent_upscale", "h3_selflift")
 SEED_MODES = ("inherit", "offset")
 UPSCALE_METHODS = ("lanczos", "nvidia_rtx_vsr", "h3_latent")
 MAX_REFINE_PASSES = 9999
@@ -23,6 +23,34 @@ DEFAULT_REFINE_SIGMA_SAMPLER = "euler"
 MAX_SPATIAL_TILES = 8
 DEFAULT_SPATIAL_TILES = 2
 DEFAULT_TILE_OVERLAP = 128
+DEFAULT_SELFLIFT_TRANSITION_STEP = 5
+DEFAULT_SELFLIFT_LOWRES_SCALE = 0.4
+DEFAULT_SELFLIFT_RHO = 0.6
+DEFAULT_SELFLIFT_W_MIN = 0.5
+DEFAULT_SELFLIFT_W_MAX = 1.0
+
+
+def _normalize_selflift_upscaler(raw: Any) -> str:
+    if raw is None or raw is False:
+        return "none"
+    name = str(raw).strip()
+    return "none" if not name or name.startswith("(") else name
+
+
+def _clamp_selflift_float(raw: Any, default: float) -> float:
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        value = default
+    return max(0.0, min(1.0, value))
+
+
+def _clamp_selflift_transition(raw: Any) -> int:
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = DEFAULT_SELFLIFT_TRANSITION_STEP
+    return max(1, min(10000, value))
 
 
 def _clamp_tile_count(raw: Any) -> int:
@@ -133,6 +161,10 @@ def refine_uses_h3_latent(pack: dict[str, Any] | None) -> bool:
         return True
     method = str(pack.get("upscale_method") or "").strip().lower()
     return mode == "upscale" and method == "h3_latent"
+
+
+def refine_uses_selflift(pack: dict[str, Any] | None) -> bool:
+    return str((pack or {}).get("mode") or "").strip().lower() == "h3_selflift"
 
 
 def latent_upscale_model_name(pack: dict[str, Any] | None) -> str:
@@ -302,6 +334,13 @@ def pack_refine(
     enable_tiling: bool = False,
     tile_count: int = 2,
     tile_overlap: int = 128,
+    selflift_upscaler_model: str = "none",
+    selflift_transition_step: int = DEFAULT_SELFLIFT_TRANSITION_STEP,
+    selflift_lowres_scale: float = DEFAULT_SELFLIFT_LOWRES_SCALE,
+    selflift_rho: float = DEFAULT_SELFLIFT_RHO,
+    selflift_w_min: float = DEFAULT_SELFLIFT_W_MIN,
+    selflift_w_max: float = DEFAULT_SELFLIFT_W_MAX,
+    selflift_highres_tiling: bool = False,
 ) -> dict[str, Any]:
     mode = str(mode or "refine").strip().lower()
     if mode not in REFINE_MODES:
@@ -357,6 +396,15 @@ def pack_refine(
         "enable_tiling": bool(enable_tiling),
         "tile_count": _clamp_tile_count(tile_count),
         "tile_overlap": _clamp_tile_overlap(tile_overlap),
+        "selflift_upscaler_model": _normalize_selflift_upscaler(selflift_upscaler_model),
+        "selflift_transition_step": _clamp_selflift_transition(selflift_transition_step),
+        "selflift_lowres_scale": _clamp_selflift_float(
+            selflift_lowres_scale, DEFAULT_SELFLIFT_LOWRES_SCALE
+        ),
+        "selflift_rho": _clamp_selflift_float(selflift_rho, DEFAULT_SELFLIFT_RHO),
+        "selflift_w_min": _clamp_selflift_float(selflift_w_min, DEFAULT_SELFLIFT_W_MIN),
+        "selflift_w_max": _clamp_selflift_float(selflift_w_max, DEFAULT_SELFLIFT_W_MAX),
+        "selflift_highres_tiling": bool(selflift_highres_tiling),
     }
 
 
@@ -445,6 +493,25 @@ def normalize_refine_pack(
         "enable_tiling": bool(raw.get("enable_tiling", False)),
         "tile_count": _clamp_tile_count(raw.get("tile_count")),
         "tile_overlap": _clamp_tile_overlap(raw.get("tile_overlap")),
+        "selflift_upscaler_model": _normalize_selflift_upscaler(
+            raw.get("selflift_upscaler_model")
+        ),
+        "selflift_transition_step": _clamp_selflift_transition(
+            raw.get("selflift_transition_step")
+        ),
+        "selflift_lowres_scale": _clamp_selflift_float(
+            raw.get("selflift_lowres_scale"), DEFAULT_SELFLIFT_LOWRES_SCALE
+        ),
+        "selflift_rho": _clamp_selflift_float(
+            raw.get("selflift_rho"), DEFAULT_SELFLIFT_RHO
+        ),
+        "selflift_w_min": _clamp_selflift_float(
+            raw.get("selflift_w_min"), DEFAULT_SELFLIFT_W_MIN
+        ),
+        "selflift_w_max": _clamp_selflift_float(
+            raw.get("selflift_w_max"), DEFAULT_SELFLIFT_W_MAX
+        ),
+        "selflift_highres_tiling": bool(raw.get("selflift_highres_tiling", False)),
     }
 
 
@@ -509,6 +576,34 @@ def refine_fingerprint(plan) -> dict[str, Any]:
         "refine_sample_model": bool(pack.get("has_sample_model") or pack.get("sample_model") is not None),
         "refine_skip_fl2v": bool(pack.get("skip_fl2v", True)),
     }
+    if refine_uses_selflift(pack):
+        transition = pack.get("selflift_transition_step")
+        lowres_scale = pack.get("selflift_lowres_scale")
+        rho = pack.get("selflift_rho")
+        w_min = pack.get("selflift_w_min")
+        w_max = pack.get("selflift_w_max")
+        payload.update(
+            {
+                "refine_selflift_upscaler": pack.get("selflift_upscaler_model") or "none",
+                "refine_selflift_transition": int(
+                    DEFAULT_SELFLIFT_TRANSITION_STEP if transition is None else transition
+                ),
+                "refine_selflift_lowres_scale": round(
+                    float(DEFAULT_SELFLIFT_LOWRES_SCALE if lowres_scale is None else lowres_scale),
+                    4,
+                ),
+                "refine_selflift_rho": round(
+                    float(DEFAULT_SELFLIFT_RHO if rho is None else rho), 4
+                ),
+                "refine_selflift_w_min": round(
+                    float(DEFAULT_SELFLIFT_W_MIN if w_min is None else w_min), 4
+                ),
+                "refine_selflift_w_max": round(
+                    float(DEFAULT_SELFLIFT_W_MAX if w_max is None else w_max), 4
+                ),
+                "refine_selflift_tiling": bool(pack.get("selflift_highres_tiling")),
+            }
+        )
     if refine_uses_h3_latent(pack) and bool(pack.get("enable_latent_chunking")):
         payload["refine_enable_latent_chunking"] = True
     if str(pack.get("mode") or "") != "latent_upscale" and bool(pack.get("enable_tiling")):
@@ -523,6 +618,27 @@ def refine_report_line(plan) -> str | None:
     if not isinstance(pack, dict) or not pack.get("enabled"):
         return None
     mode = pack.get("mode") or "refine"
+    if refine_uses_selflift(pack):
+        parsed = pack.get("sigmas_parsed") or ()
+        steps = max(1, len(parsed) - 1) if parsed else 0
+        wired = bool(pack.get("has_sigmas_tensor") or pack.get("sigmas_tensor") is not None)
+        transition = pack.get("selflift_transition_step")
+        lowres_scale = pack.get("selflift_lowres_scale")
+        rho = pack.get("selflift_rho")
+        schedule = f"sigmas {pack.get('sampler') or 'euler'} {steps}-step" if wired else "sigmas 未接线"
+        line = (
+            "Refine: ON (h3_selflift, "
+            f"{schedule}, transition={int(DEFAULT_SELFLIFT_TRANSITION_STEP if transition is None else transition)}, "
+            f"lowres={float(DEFAULT_SELFLIFT_LOWRES_SCALE if lowres_scale is None else lowres_scale):g}, "
+            f"rho={float(DEFAULT_SELFLIFT_RHO if rho is None else rho):g}, "
+            f"upscaler={pack.get('selflift_upscaler_model') or 'none'}"
+            ")"
+        )
+        if pack.get("selflift_highres_tiling"):
+            line += ", highres tiling"
+        if pack.get("confirm_first_pass"):
+            line += " — 先确认一采（无缓存只一采，有缓存则二采）"
+        return line
     extra = ""
     if refine_needs_canvas(pack):
         ar = pack.get("aspect_ratio") or FOLLOW_DIRECTOR_ASPECT
